@@ -1,16 +1,12 @@
-// A simple example of quickly converting SQL result into an Excel file.
-package main
+package sql2xlsx
 
+// A simple example of quickly converting SQL result into an Excel file.
+//參考：https://github.com/bwmarrin/sql2xlsx
 import (
 	"database/sql"
-	"flag"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
 	"time"
 
-	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/tealeg/xlsx"
 )
 
@@ -23,62 +19,7 @@ var (
 	outf string
 )
 
-// Parse command line arguments
-func init() {
-
-	flag.StringVar(&host, "h", "", "SQL Server hostname or IP")
-	flag.StringVar(&user, "u", "", "User ID")
-	flag.StringVar(&pass, "p", "", "Password")
-	flag.StringVar(&sqlf, "s", "", "SQL Query filename")
-	flag.StringVar(&outf, "o", "", "Output filename")
-
-	if len(os.Args) < 5 {
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	flag.Parse()
-
-}
-
-func main() {
-
-	// Connect to SQL Server
-	dsn := fmt.Sprintf("server=%s;user id=%s;password=%s;encrypt=disable", host, user, pass)
-	conn, err := sql.Open("mssql", dsn)
-	if err != nil {
-		log.Fatalf("error opening connection to server, %s\n", err)
-	}
-	defer conn.Close()
-
-	// Verify connection to SQL Server
-	err = conn.Ping()
-	if err != nil {
-		log.Fatalf("error verifying connection to server, %s\n", err)
-		return
-	}
-
-	// Load SQL Query file
-	query, err := ioutil.ReadFile(sqlf)
-	if err != nil {
-		log.Fatalf("error opening SQL Query file %s, %s\n", sqlf, err)
-	}
-
-	// Query the database
-	rows, err := conn.Query(string(query))
-	if err != nil {
-		log.Fatalf("error running query, %s\n", err)
-	}
-	defer rows.Close()
-
-	err = generateXLSXFromRows(rows, outf)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-}
-
-func generateXLSXFromRows(rows *sql.Rows, outf string) error {
+func GenerateXLSXFromRows(rows *sql.Rows, outf string, writeheader bool) error {
 
 	var err error
 
@@ -104,9 +45,11 @@ func generateXLSXFromRows(rows *sql.Rows, outf string) error {
 	}
 
 	// Write Headers to 1st row
-	xrow := xsheet.AddRow()
-	xrow.WriteSlice(&colNames, -1)
-
+	var xrow *xlsx.Row
+	if writeheader == true {
+		xrow = xsheet.AddRow()
+		xrow.WriteSlice(&colNames, -1)
+	}
 	// Process sql rows
 	for rows.Next() {
 
